@@ -79,6 +79,32 @@ class RichLabel:
             attr_str.addAttribute_value_range_(
                 objc_util.ns('NSColor'), self.objc_color,
                 objc_util.NSRange(self.start, self.end - self.start))
+                
+    class Outline(RichText):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            assert len(
+                self.node.attrs) <= 2, f'Give at most color and a width: {self.node}'
+            outline_color = None
+            outline_width = None
+            for key in self.node.attrs.keys():
+                try:
+                    outline_width = float(key)
+                except ValueError:
+                    outline_color = ui.parse_color(key)
+            self.outline_width = outline_width or 2.0
+            self.outline_color = outline_color or (0, 0, 0, 1)
+            self.objc_color = objc_util.UIColor.colorWithRed_green_blue_alpha_(
+                *self.outline_color)
+
+        def apply(self, attr_str):
+            attr_str.addAttribute_value_range_(
+                objc_util.ns('NSStrokeColor'), self.objc_color,
+                objc_util.NSRange(self.start, self.end - self.start))
+            attr_str.addAttribute_value_range_(
+                objc_util.ns('NSStrokeWidth'), self.outline_width,
+                objc_util.NSRange(self.start, self.end - self.start))
+
 
     _tag_to_class = {
         'b': Bold,
@@ -89,6 +115,8 @@ class RichLabel:
         'color': Color,
         'f': Font,
         'font': Font,
+        'o': Outline,
+        'outline': Outline,
     }
     
     _font_weights = {
@@ -182,6 +210,11 @@ if __name__ == '__main__':
         "<f Zapfino><c red>Color</c></f>",
         "<b>Bold <i>italic</i></b>",
         "and <i><f system 32>just</f> italic</i>",
+        "Outlines:",
+        "<o>DEFAULT</o>",
+        "<o 3>THICK</o>",
+        "<o 3 blue>COLORED</o>",
+        "<o -2><c orange>FILLED</c></o>",
     ]))
     
     r.present('fullscreen')
