@@ -105,6 +105,37 @@ class RichLabel:
                 objc_util.ns('NSStrokeWidth'), self.outline_width,
                 objc_util.NSRange(self.start, self.end - self.start))
 
+    class Line(RichText):
+        styles = {
+            'thick': 0x02,
+            'double': 0x09,
+            'dot': 0x0100,
+            'dash': 0x0200,
+            'dashdot': 0x0300,
+            'dashdotdot': 0x0400,
+            'byword': 0x8000
+        }
+        
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.line_style = 0
+            for key in self.node.attrs.keys():
+                self.line_style |= self.styles.get(key, 0)
+            self.line_style = self.line_style or 1
+                
+        def apply(self, attr_str):
+            attr_str.addAttribute_value_range_(
+                objc_util.ns(self.attr_key), self.line_style,
+                objc_util.NSRange(self.start, self.end - self.start))
+                
+    class Underline(Line):
+        
+        attr_key = 'NSUnderline'
+        
+    class Strikethrough(Line):
+        
+        attr_key = 'NSStrikethrough'
+        
 
     _tag_to_class = {
         'b': Bold,
@@ -117,6 +148,10 @@ class RichLabel:
         'font': Font,
         'o': Outline,
         'outline': Outline,
+        'u': Underline,
+        'underline': Underline,
+        's': Strikethrough,
+        'strike': Strikethrough,
     }
     
     _font_weights = {
@@ -209,12 +244,14 @@ if __name__ == '__main__':
         "Plain",
         "<f Zapfino><c red>Color</c></f>",
         "<b>Bold <i>italic</i></b>",
-        "and <i><f system 32>just</f> italic</i>",
-        "Outlines:",
+        "and <i><f system 32>just</f> italic</i>\n",
+        "<u>Outlines:</u>\n",
         "<o>DEFAULT</o>",
         "<o 3>THICK</o>",
         "<o 3 blue>COLORED</o>",
-        "<o -2><c orange>FILLED</c></o>",
+        "<o -2><c orange>FILLED</c></o>\n",
+        "<s double byword>really not cool</s>"
     ]))
     
     r.present('fullscreen')
+
