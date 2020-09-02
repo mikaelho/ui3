@@ -1,3 +1,4 @@
+import ast
 from itertools import chain
 import types
 
@@ -9,6 +10,7 @@ import ui
 
 NSMutableAttributedString = objc_util.ObjCClass('NSMutableAttributedString')
 UIFont = objc_util.ObjCClass('UIFont')
+NSShadow = objc_util.ObjCClass('NSShadow')
 
 
 def get_fonts():
@@ -27,6 +29,11 @@ class RichLabel:
     class RichText(types.SimpleNamespace):
         
         trait = 0
+        
+        def set(key, value):
+            attr_str.addAttribute_value_range_(
+                objc_util.ns(key), value,
+                objc_util.NSRange(self.start, self.end - self.start))
 
     class TextTrait(RichText):
         
@@ -92,7 +99,7 @@ class RichLabel:
                     outline_width = float(key)
                 except ValueError:
                     outline_color = ui.parse_color(key)
-            self.outline_width = outline_width or 2.0
+            self.outline_width = outline_width or 3.0
             self.outline_color = outline_color or (0, 0, 0, 1)
             self.objc_color = objc_util.UIColor.colorWithRed_green_blue_alpha_(
                 *self.outline_color)
@@ -136,6 +143,39 @@ class RichLabel:
         
         attr_key = 'NSStrikethrough'
         
+    class Shadow(RichText):
+        
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            blur = offset = color = None
+            for key in self.node.attrs.keys():
+                try:
+                    blur = float(key)
+                except ValueError:
+                    try:
+                        value = ast.literal_eval(key)
+                        if (type(value) is tuple and  
+                        all(map(lambda x: x - 0 == x, value))):
+                            if len(value) == 2:
+                                offset = value
+                            else:
+                                color = ui.parse_color(value)
+                    except:
+                        color = ui.parse_color(key)
+            self.blur = blur or 3.0
+            self.offset = offset or (2, 2)
+            self.color = color or ui.parse_color('grey')
+            self.objc_color = objc_util.UIColor.colorWithRed_green_blue_alpha_(
+                *self.color)
+
+        def apply(self, attr_str):
+            shadow = NSShadow.alloc().init()
+            shadow.setShadowOffset_(objc_util.CGSize(*self.offset))
+            shadow.setShadowColor_(self.objc_color)
+            shadow.setShadowBlurRadius_(self.blur)
+            attr_str.addAttribute_value_range_(
+                objc_util.ns('NSShadow'), shadow,
+                objc_util.NSRange(self.start, self.end - self.start))
 
     _tag_to_class = {
         'b': Bold,
@@ -150,8 +190,8 @@ class RichLabel:
         'outline': Outline,
         'u': Underline,
         'underline': Underline,
-        's': Strikethrough,
         'strike': Strikethrough,
+        'shadow': Shadow,
     }
     
     _font_weights = {
@@ -242,15 +282,18 @@ if __name__ == '__main__':
     
     r.set_rich_text("\n".join([
         "Plain",
-        "<f Zapfino><c red>Color</c></f>",
         "<b>Bold <i>italic</i></b>",
-        "and <i><f system 32>just</f> italic</i>\n",
-        "<u>Outlines:</u>\n",
+        "and <i><f system 32>just</f> italic</i>",
+        "",
+        "<f Zapfino><c red>Color</c>",
+        "<shadow>Shadow</shadow></f>",
+        "<u>Outlines:</u>",
+        "<b>",
         "<o>DEFAULT</o>",
-        "<o 3>THICK</o>",
-        "<o 3 blue>COLORED</o>",
-        "<o -2><c orange>FILLED</c></o>\n",
-        "<s double byword>really not cool</s>"
+        "<o blue>COLORED</o>",
+        "<o -3><c orange>FILLED</c></o>",
+        "</b>",
+        "<strike double byword>really not cool</s>"
     ]))
     
     r.present('fullscreen')
