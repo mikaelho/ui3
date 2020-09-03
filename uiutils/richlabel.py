@@ -30,16 +30,22 @@ class RichLabel:
         
         trait = 0
         
-        def set(key, value):
-            attr_str.addAttribute_value_range_(
+        def set(self, key, value):
+            self.attr_str.addAttribute_value_range_(
                 objc_util.ns(key), value,
                 objc_util.NSRange(self.start, self.end - self.start))
+                
+        @property
+        def objc_color(self):
+            return objc_util.UIColor.colorWithRed_green_blue_alpha_(
+                *ui.parse_color(self.color))
 
     class TextTrait(RichText):
         
         all_fonts = set(get_fonts())
         
         def apply(self, attr_str):
+            self.attr_str = attr_str
             if self.font_name == 'system':
                 font = UIFont.systemFontOfSize_traits_(
                     self.font_size, self.collected_traits)
@@ -48,9 +54,7 @@ class RichLabel:
                     self.font_name, self.font_size, self.collected_traits)
             else:
                 raise ValueError('Unknown font defined', self.font_name)
-            attr_str.addAttribute_value_range_(
-                objc_util.ns('NSFont'), font,
-                objc_util.NSRange(self.start, self.end - self.start))
+            self.set('NSFont', font)
 
     class Bold(TextTrait):
 
@@ -79,13 +83,10 @@ class RichLabel:
             assert len(
                 self.node.attrs) == 1, f'Give only one color: {self.node}'
             self.color = ui.parse_color(list(self.node.attrs.keys())[0])
-            self.objc_color = objc_util.UIColor.colorWithRed_green_blue_alpha_(
-                *self.color)
 
         def apply(self, attr_str):
-            attr_str.addAttribute_value_range_(
-                objc_util.ns('NSColor'), self.objc_color,
-                objc_util.NSRange(self.start, self.end - self.start))
+            self.attr_str = attr_str
+            self.set('NSColor', self.objc_color)
                 
     class Outline(RichText):
         def __init__(self, **kwargs):
@@ -100,17 +101,12 @@ class RichLabel:
                 except ValueError:
                     outline_color = ui.parse_color(key)
             self.outline_width = outline_width or 3.0
-            self.outline_color = outline_color or (0, 0, 0, 1)
-            self.objc_color = objc_util.UIColor.colorWithRed_green_blue_alpha_(
-                *self.outline_color)
+            self.color = outline_color or 'black'
 
         def apply(self, attr_str):
-            attr_str.addAttribute_value_range_(
-                objc_util.ns('NSStrokeColor'), self.objc_color,
-                objc_util.NSRange(self.start, self.end - self.start))
-            attr_str.addAttribute_value_range_(
-                objc_util.ns('NSStrokeWidth'), self.outline_width,
-                objc_util.NSRange(self.start, self.end - self.start))
+            self.attr_str = attr_str
+            self.set('NSStrokeColor', self.objc_color)
+            self.set('NSStrokeWidth', self.outline_width)
 
     class Line(RichText):
         styles = {
@@ -125,23 +121,30 @@ class RichLabel:
         
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
-            self.line_style = 0
+            line_style = 0
+            line_color = None
             for key in self.node.attrs.keys():
-                self.line_style |= self.styles.get(key, 0)
-            self.line_style = self.line_style or 1
+                if key in self.styles:
+                    line_style |= self.styles[key]
+                else:
+                    line_color = ui.parse_color(key)
+            self.line_style = line_style or 1
+            self.color = line_color or 'black'
                 
         def apply(self, attr_str):
-            attr_str.addAttribute_value_range_(
-                objc_util.ns(self.attr_key), self.line_style,
-                objc_util.NSRange(self.start, self.end - self.start))
+            self.attr_str = attr_str
+            self.set(self.style_key, self.line_style)
+            self.set(self.color_key, self.objc_color)          
                 
     class Underline(Line):
         
-        attr_key = 'NSUnderline'
+        style_key = 'NSUnderline'
+        color_key = 'NSUnderlineColor'
         
     class Strikethrough(Line):
         
-        attr_key = 'NSStrikethrough'
+        style_key = 'NSStrikethrough'
+        color_key = 'NSStrikethroughColor'
         
     class Shadow(RichText):
         
@@ -164,18 +167,16 @@ class RichLabel:
                         color = ui.parse_color(key)
             self.blur = blur or 3.0
             self.offset = offset or (2, 2)
-            self.color = color or ui.parse_color('grey')
-            self.objc_color = objc_util.UIColor.colorWithRed_green_blue_alpha_(
-                *self.color)
+            self.color = color or 'grey'
 
         def apply(self, attr_str):
+            self.attr_str = attr_str
             shadow = NSShadow.alloc().init()
             shadow.setShadowOffset_(objc_util.CGSize(*self.offset))
             shadow.setShadowColor_(self.objc_color)
             shadow.setShadowBlurRadius_(self.blur)
-            attr_str.addAttribute_value_range_(
-                objc_util.ns('NSShadow'), shadow,
-                objc_util.NSRange(self.start, self.end - self.start))
+            self.set('NSShadow', shadow)
+
 
     _tag_to_class = {
         'b': Bold,
@@ -287,13 +288,15 @@ if __name__ == '__main__':
         "",
         "<f Zapfino><c red>Color</c>",
         "<shadow>Shadow</shadow></f>",
-        "<u>Outlines:</u>",
+        "<c white><shadow green 0><b>BLOCK</b></shadow></c>",
+        "",
+        "<u lightgrey>Outlines:</u>",
         "<b>",
         "<o>DEFAULT</o>",
         "<o blue>COLORED</o>",
         "<o -3><c orange>FILLED</c></o>",
         "</b>",
-        "<strike double byword>really not cool</s>"
+        "<strike double red byword>really not cool</s>"
     ]))
     
     r.present('fullscreen')
