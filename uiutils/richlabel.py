@@ -1,4 +1,5 @@
 import ast
+import ctypes
 from itertools import chain
 import types
 
@@ -26,6 +27,9 @@ def get_fonts():
     
 
 class RichLabel:
+    
+    default = '{}'
+    
     class RichText(types.SimpleNamespace):
         
         trait = 0
@@ -178,6 +182,77 @@ class RichLabel:
             self.set('NSShadow', shadow)
 
 
+    class Oblique(RichText):
+        
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            oblique = None
+            try:
+                for key in self.node.attrs.keys():
+                    oblique = float(key)
+            except ValueError:
+                raise ValueError('Obliqueness should be a float', self.node)
+            self.oblique = oblique or 0.25
+            
+        def apply(self, attr_str):
+            self.attr_str = attr_str
+            self.set('NSObliqueness', self.oblique)
+            
+    class StandardFont(RichText):
+        
+        def apply(self, attr_str):
+            self.attr_str = attr_str
+            objc_style = objc_util.ObjCInstance(
+                ctypes.c_void_p.in_dll(
+                    objc_util.c, self.style))
+            font = UIFont.preferredFontForTextStyle_(objc_style)
+            self.set('NSFont', font)
+        
+    class Body(StandardFont):
+        
+        style = 'UIFontTextStyleBody'
+        
+    class Callout(StandardFont):
+        
+        style = 'UIFontTextStyleCallout'
+        
+    class Caption1(StandardFont):
+        
+        style = 'UIFontTextStyleCaption1'
+        
+    class Caption2(StandardFont):
+        
+        style = 'UIFontTextStyleCaption2'
+
+    class Footnote(StandardFont):
+        
+        style = 'UIFontTextStyleFootnote'
+        
+    class Headline(StandardFont):
+        
+        style = 'UIFontTextStyleHeadline'
+        
+    class Subheadline(StandardFont):
+        
+        style = 'UIFontTextStyleSubheadline'
+        
+    class LargeTitle(StandardFont):
+        
+        style = 'UIFontTextStyleLargeTitle'
+
+    class Title1(StandardFont):
+        
+        style = 'UIFontTextStyleTitle1'
+                
+    class Title2(StandardFont):
+        
+        style = 'UIFontTextStyleTitle2'
+                
+    class Title3(StandardFont):
+        
+        style = 'UIFontTextStyleTitle3'
+
+
     _tag_to_class = {
         'b': Bold,
         'bold': Bold,
@@ -193,6 +268,18 @@ class RichLabel:
         'underline': Underline,
         'strike': Strikethrough,
         'shadow': Shadow,
+        'oblique': Oblique,
+        'body': Body,
+        'callout': Callout,
+        'caption1': Caption1,
+        'caption2': Caption2,
+        'footnote': Footnote,
+        'headline': Headline,
+        'subheadline': Subheadline,
+        'largetitle': LargeTitle,
+        'title1': Title1,
+        'title2': Title2,
+        'title3': Title3,
     }
     
     _font_weights = {
@@ -207,11 +294,11 @@ class RichLabel:
         'black': 1.0,
     }
 
-    def __new__(*args, **kwargs):
+    def __new__(cls, *args, **kwargs):
         target_instance = ui.Label(*args, **kwargs)
-        for key in dir(RichLabel):
+        for key in dir(cls):
             if key.startswith('__'): continue
-            value = getattr(RichLabel, key)
+            value = getattr(cls, key)
             if callable(value) and type(value) is not type:
                 setattr(target_instance, key,
                         types.MethodType(value, target_instance))
@@ -219,7 +306,9 @@ class RichLabel:
                 setattr(target_instance, key, value)
         return target_instance
 
-    def set_rich_text(self, rich_text_str):
+    def rich_text(self, rich_text_str):
+        rich_text_str = self.default.format(rich_text_str)
+        
         text, formats = self._parse_string(rich_text_str)
         attr_str = NSMutableAttributedString.alloc().initWithString_(text)
         for f in reversed(formats):
@@ -273,6 +362,8 @@ class RichLabel:
 
 
 if __name__ == '__main__':
+    
+    v = ui.View(background_color='white')
 
     r = RichLabel(
         font=('Arial', 24),
@@ -281,14 +372,13 @@ if __name__ == '__main__':
         number_of_lines=0,
     )
     
-    r.set_rich_text("\n".join([
+    r.rich_text("\n".join([
         "Plain",
         "<b>Bold <i>italic</i></b>",
         "and <i><f system 32>just</f> italic</i>",
         "",
         "<f Zapfino><c red>Color</c>",
         "<shadow>Shadow</shadow></f>",
-        "<c white><shadow green 0><b>BLOCK</b></shadow></c>",
         "",
         "<u lightgrey>Outlines:</u>",
         "<b>",
@@ -296,8 +386,66 @@ if __name__ == '__main__':
         "<o blue>COLORED</o>",
         "<o -3><c orange>FILLED</c></o>",
         "</b>",
-        "<strike double red byword>really not cool</s>"
+        "<strike double red byword><oblique>really not cool</oblique></strike>"
     ]))
     
-    r.present('fullscreen')
+    v.add_subview(r)
+    
+    class FancyBlockLabel(RichLabel):
+        
+        font = ('Arial', 24)
+        alignment = ui.ALIGN_CENTER
+        number_of_lines = 0
+        default = '<c white><shadow green 0><b>&lt;{}></b></shadow></c>'
+        
+            
+    fancy = FancyBlockLabel(
+        background_color='white',
+    )
+    
+    fancy.rich_text('FANCY_BLOCK')
+    
+    v.add_subview(fancy)
+    
+    r2 = RichLabel(
+        font=('Arial', 24),
+        background_color='white',
+        alignment=ui.ALIGN_CENTER,
+        number_of_lines=0,
+    )
+    
+    r2.rich_text("\n".join([
+        "<headline>headline</headline>",
+        "<subheadline>subheadline</subheadline>",
+        "<largetitle>largetitle</largetitle>",
+        "<title1>title1</title1>",
+        "<title2>title2</title2>",
+        "<title3>title3</title3>",
+        "<body>body</body>",
+        "<callout>callout</callout>",
+        "<caption1>caption1</caption1>",
+        "<caption2>caption2</caption2>",
+        "<footnote>footnote</footnote>",
+    ]))
+    
+    v.add_subview(r2)
+    
+    v.present('fullscreen')
+    
+    r.frame = v.bounds
+    r.size_to_fit()
+    r.center = v.bounds.center()
+    r.x = 0
+    r.width = v.width/2
 
+    fancy.frame = v.bounds
+    fancy.size_to_fit()
+    fancy.center = v.bounds.center()
+    fancy.y = r.y + r.height + 40
+    
+    r2.frame = v.bounds
+    r2.size_to_fit()
+    r2.width = v.width/2
+    r2.center = v.bounds.center()
+    r2.x = v.width/2
+    
