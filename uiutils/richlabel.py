@@ -396,6 +396,12 @@ class RichLabel:
                 break
         return top_node, bottom_node
 
+    def html(self, html):
+        data = html.encode()
+        attr_str = NSMutableAttributedString.alloc().\
+        initWithHTML_documentAttributes_(
+            data, None)
+        self.objc_instance.setAttributedText_(attr_str)
 
 class BoldLabel(RichLabel):
     default = '<b/>'
@@ -503,7 +509,7 @@ if __name__ == '__main__':
         background_color='white',
     )
     
-    fancy.rich_text('&lt;FANCY_BLOCK>')
+    fancy.rich_text('FANCY BLOCK')
     
     v.add_subview(fancy)
     
