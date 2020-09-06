@@ -483,6 +483,7 @@ if __name__ == '__main__':
         "<o blue>COLORED</o>",
         "<o -3><c orange>FILLED</c></o>",
         "</b>",
+        "<oblique -0.25>oblique</oblique>",
         "<strike double red byword><oblique>really not cool</oblique></strike>"
     ]))
     
@@ -502,7 +503,7 @@ if __name__ == '__main__':
         background_color='white',
     )
     
-    fancy.rich_text('FANCY_BLOCK')
+    fancy.rich_text('&lt;FANCY_BLOCK>')
     
     v.add_subview(fancy)
     
