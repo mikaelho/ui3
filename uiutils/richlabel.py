@@ -28,7 +28,11 @@ def get_fonts():
 
 class RichLabel:
     
-    default = '{}'
+    # No default root
+    default = None
+    
+    # No custom tags
+    custom = {}
     
     class RichText(types.SimpleNamespace):
         
@@ -307,7 +311,7 @@ class RichLabel:
         return target_instance
 
     def rich_text(self, rich_text_str):
-        rich_text_str = self.default.format(rich_text_str)
+        #rich_text_str = self.default.format(rich_text_str)
         
         text, formats = self._parse_string(rich_text_str)
         attr_str = NSMutableAttributedString.alloc().initWithString_(text)
@@ -317,6 +321,10 @@ class RichLabel:
 
     def _parse_string(self, rich_string: str):
         soup = bs4.BeautifulSoup(rich_string, 'html5lib')
+        root = soup.body
+        if self.default:
+            self.wrap_root(soup.body, self.default)
+
         formats = []
 
         def process(parent, end, font_name, font_size, traits):
@@ -327,6 +335,8 @@ class RichLabel:
                     collected_text += t
                     end += len(t)
                 else:
+                    if node.name in self.custom:
+                        node = self.wrap_node(node)
                     format_class = self._tag_to_class[node.name]
                     collected_traits = traits | format_class.trait
                     formatter = format_class(
@@ -356,10 +366,97 @@ class RichLabel:
         font, font_size = self.font
         if self.objc_instance.font().isSystemFont():
             font = 'system'
-        end, text = process(soup.body, 0, font, font_size, 0)
+        end, text = process(root, 0, font, font_size, 0)
         
         return text, formats
+        
+    def wrap_root(self, root, wrapper_str):
+        top_node, bottom_node = self.get_wrapper_nodes(wrapper_str)
+        # Move children
+        for child in list(root.children):
+            bottom_node.insert(len(bottom_node.contents), child)
+        # Insert new child
+        root.insert(0, top_node)
+        
+    def wrap_node(self, node):
+        top_node, bottom_node = self.get_wrapper_nodes(self.custom[node.name])
+        for child in list(node.children):
+            bottom_node.append(child)
+        node.replace_with(top_node)
+        return top_node
+        
+    def get_wrapper_nodes(self, wrapper_str):
+        wrapper_soup = bs4.BeautifulSoup(wrapper_str, 'html5lib')
+        top_node = next(wrapper_soup.html.body.children)
+        control_node = bottom_node = top_node
+        while control_node:
+            bottom_node = control_node
+            control_node = next(bottom_node.children, None)
+            if not control_node or not control_node.name:
+                break
+        return top_node, bottom_node
 
+
+class BoldLabel(RichLabel):
+    default = '<b/>'
+    
+class ItalicLabel(RichLabel):
+    default = '<i/>'
+    
+class BoldItalicLabel(RichLabel):
+    default = '<i><b/></i>'
+
+class OutlineLabel(RichLabel):
+    default = '<o/>'
+
+class UnderlineLabel(RichLabel):
+    default = '<u/>'
+    
+class StrikeLabel(RichLabel):
+    default = '<strike/>'
+    
+class ShadowLabel(RichLabel):
+    default = '<shadow/>'
+    
+class ObliqueLabel(RichLabel):
+    default = '<oblique/>'
+
+class BoldObliqueLabel(RichLabel):
+    default = '<oblique><b/></oblique>'
+    
+class BodyLabel(RichLabel):
+    default = '<body/>'
+
+class CalloutLabel(RichLabel):
+    default = '<callout/>'
+
+class Caption1Label(RichLabel):
+    default = '<caption1/>'
+
+class Caption2Label(RichLabel):
+    default = '<caption2/>'
+
+class FootnoteLabel(RichLabel):
+    default = '<footnote/>'
+
+class HeadlineLabel(RichLabel):
+    default = '<headline/>'
+
+class SubheadlineLabel(RichLabel):
+    default = '<subheadline/>'
+
+class LargeTitleLabel(RichLabel):
+    default = '<largetitle/>'
+
+class Title1Label(RichLabel):
+    default = '<title1/>'
+    
+class Title2Label(RichLabel):
+    default = '<title2/>'
+    
+class Title3Label(RichLabel):
+    default = '<title3/>'
+        
 
 if __name__ == '__main__':
     
@@ -391,15 +488,17 @@ if __name__ == '__main__':
     
     v.add_subview(r)
     
-    class FancyBlockLabel(RichLabel):
-        
+    class MyRichLabel(RichLabel):
+        custom = {
+            's': '<b><shadow green 0/></b>'
+        }
+        default = '<c white><s/></c>'
         font = ('Arial', 24)
         alignment = ui.ALIGN_CENTER
         number_of_lines = 0
-        default = '<c white><shadow green 0><b>&lt;{}></b></shadow></c>'
         
             
-    fancy = FancyBlockLabel(
+    fancy = MyRichLabel(
         background_color='white',
     )
     
@@ -408,19 +507,18 @@ if __name__ == '__main__':
     v.add_subview(fancy)
     
     r2 = RichLabel(
-        font=('Arial', 24),
         background_color='white',
         alignment=ui.ALIGN_CENTER,
         number_of_lines=0,
     )
     
     r2.rich_text("\n".join([
-        "<headline>headline</headline>",
-        "<subheadline>subheadline</subheadline>",
         "<largetitle>largetitle</largetitle>",
         "<title1>title1</title1>",
         "<title2>title2</title2>",
         "<title3>title3</title3>",
+        "<headline>headline</headline>",
+        "<subheadline>subheadline</subheadline>",
         "<body>body</body>",
         "<callout>callout</callout>",
         "<caption1>caption1</caption1>",
