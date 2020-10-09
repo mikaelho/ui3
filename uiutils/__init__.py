@@ -2,7 +2,7 @@
 UI and other utils for Pythonista iOS app
 """
 
-__version__ = '2020.10.09'
+__version__ = '2020.10.10'
 
 
 import ui
