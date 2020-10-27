@@ -24,16 +24,13 @@ def SymbolImage(name, point_size=None, weight=None, scale=None):
     objc_image = ObjCClass('UIImage').systemImageNamed_(name)
     conf = UIImageSymbolConfiguration.defaultConfiguration()
     if point_size is not None:
-        conf = UIImageSymbolConfiguration.configurationWithConfiguration_and_(
-            conf,
+        conf = conf.configurationByApplyingConfiguration_(
             UIImageSymbolConfiguration.configurationWithPointSize_(point_size))
     if weight is not None:
-        conf = UIImageSymbolConfiguration.configurationWithConfiguration_and_(
-            conf,
+        conf = conf.configurationByApplyingConfiguration_(
             UIImageSymbolConfiguration.configurationWithWeight_(weight))
     if scale is not None:
-        conf = UIImageSymbolConfiguration.configurationWithConfiguration_and_(
-            conf,
+        conf = conf.configurationByApplyingConfiguration_(
             UIImageSymbolConfiguration.configurationWithScale_(scale))
     objc_image = objc_image.imageByApplyingSymbolConfiguration_(conf)
     
