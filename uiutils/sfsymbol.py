@@ -14,7 +14,11 @@ ULTRALIGHT, THIN, LIGHT, REGULAR, MEDIUM, SEMIBOLD, BOLD, HEAVY, BLACK = range(1
 # SCALES
 SMALL, MEDIUM, LARGE = 1, 2, 3
 
-def SymbolImage(name, point_size=None, weight=None, scale=None):
+def SymbolImage(
+    name,
+    point_size=None, weight=None, scale=None, 
+    rendering_mode=ui.RENDERING_MODE_ORIGINAL
+):
     ''' Create a ui.Image from an SFSymbol name. Optional parameters:
         * `point_size` - Integer font size
         * `weight` - Font weight, one of ULTRALIGHT, THIN, LIGHT, REGULAR, MEDIUM, SEMIBOLD, BOLD, HEAVY, BLACK
@@ -36,7 +40,7 @@ def SymbolImage(name, point_size=None, weight=None, scale=None):
     
     return ui.Image.from_data(
         nsdata_to_bytes(ObjCInstance(UIImagePNGRepresentation(objc_image)))
-    )
+    ).with_rendering_mode(rendering_mode)
 
 
 if __name__ == '__main__':
