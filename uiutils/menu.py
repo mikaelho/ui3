@@ -1,5 +1,7 @@
 import ctypes
 
+from functools import partial
+
 import objc_util
 
 
@@ -13,29 +15,28 @@ class Action:
     DESTRUCTIVE = 2
     HIDDEN = 4
     
+    REGULAR = 0
+    SELECTED = 1
+    
     def __init__(self,
         title,
         handler,
         image=None,
         attributes=None,
-        selected=False,
+        state=False,
         discoverability_title=None,
     ):
         self._menu = None
-        self._title = title
         self._handler = handler
+        self._title = title
         self._image = image
         self._attributes = attributes
-        self._selected = selected
+        self._state = state
         self._discoverability_title = discoverability_title
-        
-    def _get_objc_action(self, menu):
-        self.menu = menu
-        image = self._image and self._image.objc_instance or None
         
         def _action_handler(_cmd):
             self._handler(
-                self.menu.button,
+                self._menu.button,
                 self
             )
     
@@ -45,20 +46,86 @@ class Action:
             argtypes=[ctypes.c_void_p])
         objc_util.retain_global(_action_handler_block)
         
-        objc_action = UIAction.actionWithTitle_image_identifier_handler_(
-            self._title,
-            image, 
-            None,
-            _action_handler_block,
+        self._objc_action = UIAction.actionWithHandler_(_action_handler_block)
+        
+        self._update_objc_action()
+        
+    def _update_objc_action(self):
+        a = self._objc_action
+        
+        a.setTitle_(self.title)
+        
+        image = self._image and self._image.objc_instance or None
+        a.setImage_(image)
+        
+        if not self.attributes is None:
+            a.setAttributes_(self.attributes)
+        
+        a.state = self.state
+        
+        if self.discoverability_title:
+            a.setDiscoverabilityTitle_(self.discoverability_title)
+
+        if self._menu:
+            self._menu.create_or_update()
+        
+    def _prop(attribute):
+        p = property(
+            lambda self:
+                partial(Action._getter, self, attribute)(),
+            lambda self, value:
+                partial(Action._setter, self, attribute, value)()
         )
-        if self._attributes:
-            action.setAttributes_(self._attributes)
-        if self._selected:
-            objc_action.setState_(1)
+        return p
+
+    def _getter(self, attr_string):
+        return getattr(self, f'_{attr_string}')
+
+    def _setter(self, attr_string, value):
+        setattr(self, f'_{attr_string}', value)
+        self._update_objc_action()
+            
+    title = _prop('title')
+    handler = _prop('handler')
+    image = _prop('image')
+    discoverability_title = _prop('discoverability_title')
+    attributes = _prop('attributes')
+    state = _prop('state')
+    
+    @property
+    def selected(self):
+        return self.state == self.SELECTED
         
-        return objc_action
+    @selected.setter
+    def selected(self, value):
+        self.state = self.SELECTED if value else self.REGULAR
+    
+    def _attr_prop(bitmask):
+        p = property(
+            lambda self:
+                partial(Action._attr_getter, self, bitmask)(),
+            lambda self, value:
+                partial(Action._attr_setter, self, bitmask, value)()
+        )
+        return p
         
-    def 
+    def _attr_getter(self, bitmask):
+        return bool(self.attributes and self.attributes & bitmask)
+
+    def _attr_setter(self, bitmask, value):
+        if not self.attributes:
+            if value:
+                self.attributes = bitmask
+        else:
+            if value:
+                self.attributes |= bitmask
+            else:
+                self.attributes &= ~bitmask
+    
+    hidden = _attr_prop(HIDDEN)
+    destructive = _attr_prop(DESTRUCTIVE)
+    disabled = _attr_prop(DISABLED)
+
         
 class Menu:
     
@@ -69,10 +136,10 @@ class Menu:
         self.create_or_update()
         
     def create_or_update(self):
-        objc_actions = [
-            action._get_objc_action(self)
-            for action in self.actions
-        ]
+        objc_actions = []
+        for action in self.actions:
+            action._menu = self
+            objc_actions.append(action._objc_action)
         if not objc_actions:
             raise RuntimeError('No actions', self.actions)
         objc_menu = UIMenu.menuWithChildren_(objc_actions)
@@ -98,14 +165,16 @@ if __name__ == '__main__':
     
     v = ui.View()
     
+    # Plain button
+    
     button = ui.Button(
-        title='Menu',
+        title='Plain',
         background_color='white',
         tint_color='black',
         flex='TBLR',
     )
-    button.frame = (0, 0, 50, 30)
-    button.center = v.bounds.center()
+    button.frame = (0, 0, 200, 30)
+    button.center = v.width/2, v.height/4
     
     v.add_subview(button)
     
@@ -118,5 +187,75 @@ if __name__ == '__main__':
         ('Third', handler),
     ])
     
+    # Toggles
+    
+    button2 = ui.Button(
+        title='Toggles and hidden',
+        background_color='white',
+        tint_color='black',
+        flex='TBLR',
+    )
+    button2.frame = (0, 0, 200, 30)
+    button2.center = v.bounds.center()
+    
+    v.add_subview(button2)
+    
+    placeholder = print
+    
+    expert_action = Action(
+        "Special expert action",
+        placeholder,
+    )
+    expert_action.hidden = True
+    
+    def toggle_handler(sender, action):
+        action.selected = not action.selected
+        expert_action.hidden = not action.selected
+    
+    set_menu(button2, [
+        ('Expert mode', toggle_handler),
+        expert_action,
+    ])
+    
+    # Styling
+    
+    from uiutils.sfsymbol import SymbolImage
+    
+    button3 = ui.Button(
+        title='Styling',
+        background_color='white',
+        tint_color='black',
+        flex='TBLR',
+    )
+    button3.frame = (0, 0, 200, 30)
+    button3.center = v.width/2, v.height*3/4
+    
+    v.add_subview(button3)
+    
+    set_menu(button3, [
+        Action(
+            'Verbose menu item gets the space it needs', placeholder,
+        ),
+        Action(
+            'Regular Pythonista icon', placeholder,
+            image=ui.Image('iob:close_32'),
+        ),
+
+        Action(
+            'SFSymbol', placeholder,
+            image=SymbolImage('photo.on.rectangle'),
+        ),
+        Action(
+            'Destructive', placeholder,
+            image=ui.Image('emj:No_Entry_2'),
+            attributes=Action.DESTRUCTIVE,
+        ),
+        Action(
+            'Disabled', placeholder,
+            attributes=Action.DISABLED,
+        ),
+    ])
+    
     v.present('fullscreen')
+
 
