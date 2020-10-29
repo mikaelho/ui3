@@ -16,8 +16,9 @@ SMALL, MEDIUM, LARGE = 1, 2, 3
 
 def SymbolImage(
     name,
-    point_size=None, weight=None, scale=None, 
-    rendering_mode=ui.RENDERING_MODE_ORIGINAL
+    point_size=None, weight=None, scale=None,
+    color=None, 
+    rendering_mode=ui.RENDERING_MODE_AUTOMATIC
 ):
     ''' Create a ui.Image from an SFSymbol name. Optional parameters:
         * `point_size` - Integer font size
@@ -38,9 +39,12 @@ def SymbolImage(
             UIImageSymbolConfiguration.configurationWithScale_(scale))
     objc_image = objc_image.imageByApplyingSymbolConfiguration_(conf)
     
-    return ui.Image.from_data(
+    image = ui.Image.from_data(
         nsdata_to_bytes(ObjCInstance(UIImagePNGRepresentation(objc_image)))
     ).with_rendering_mode(rendering_mode)
+    if color:
+        image = image.imageWithTintColor_(UIColor.colorWithRed_green_blue_alpha_(*ui.parse_color(color)))
+    return image
 
 
 if __name__ == '__main__':

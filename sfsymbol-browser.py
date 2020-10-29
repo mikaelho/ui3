@@ -1,6 +1,6 @@
 import ui
 
-from uiutils.sfsymbol import *
+from ui3.sfsymbol import *
 
 
 class SymbolSource:

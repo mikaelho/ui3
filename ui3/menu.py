@@ -55,8 +55,16 @@ class Action:
         
         a.setTitle_(self.title)
         
-        image = self._image and self._image.objc_instance or None
-        a.setImage_(image)
+        if not self.image:
+            a.setImage_(None)
+        else:
+            try:
+                image = self.image.objc_instance
+            except AttributeError:
+                image = self.image
+            if self.destructive:
+                image = image.imageWithTintColor_(objc_util.UIColor.systemRedColor())
+            a.setImage_(image)
         
         if not self.attributes is None:
             a.setAttributes_(self.attributes)
@@ -196,7 +204,7 @@ if __name__ == '__main__':
         flex='TBLR',
     )
     button2.frame = (0, 0, 200, 30)
-    button2.center = v.bounds.center()
+    button2.center = v.width/2, v.height*1.8/4
     
     v.add_subview(button2)
     
@@ -216,11 +224,11 @@ if __name__ == '__main__':
         ('Expert mode', toggle_handler),
         expert_action,
     ])
-    
+
     # Styling
     
     from uiutils.sfsymbol import SymbolImage
-    
+    #print(dir(SymbolImage('photo.on.rectangle').objc_instance))
     button3 = ui.Button(
         title='Styling',
         background_color='white',
@@ -247,7 +255,7 @@ if __name__ == '__main__':
         ),
         Action(
             'Destructive', placeholder,
-            image=ui.Image('emj:No_Entry_2'),
+            image=SymbolImage('tornado'),
             attributes=Action.DESTRUCTIVE,
         ),
         Action(

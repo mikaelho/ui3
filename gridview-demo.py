@@ -1,6 +1,6 @@
 from ui import *
-from uiutils.gridview import GridView
-from uiutils.safearea import SafeAreaView
+from ui3.gridview import GridView
+from ui3.safearea import SafeAreaView
 
 def style(view):
     view.background_color='white'

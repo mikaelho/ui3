@@ -3,11 +3,11 @@ requires = ["flit_core >=2,<3"]
 build-backend = "flit_core.buildapi"
 
 [tool.flit.metadata]
-module = "uiutils"
+module = "ui3"
 author = "Mikael Honkala"
 author-email = "mikael.honkala@gmail.com"
 home-page = "https://github.com/mikaelho/uiutils"
-dist-name = "pythonista-uiutils"
+dist-name = "ui3"
 description-file = "README.md"
 license = "TheUnlicense"
 classifiers = [
