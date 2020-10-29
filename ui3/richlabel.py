@@ -82,7 +82,7 @@ class RichLabel:
                     node_size = int(key)
                 except ValueError:
                     node_font = key
-            self.font_name = node_font or self.font_name
+            self.font_name = (node_font or self.font_name).replace('-', ' ')
             self.font_size = node_size or self.font_size
 
     class Color(RichText):
