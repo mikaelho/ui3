@@ -12,5 +12,5 @@ Included:
 - safearea - avoids edges on iPhones
 - scripter - generator-driven UI animations
 - sfsymbol - use Apple SFSymbols as icon images, repository root includes an icon browser
-- vector - vector class for easier UI calculations
+- [vector](docs/vector.md) - vector class for easier UI calculations
 - wkwebview - wrapper for WKWebView, to replace legacy ui.WebView
