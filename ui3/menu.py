@@ -208,11 +208,11 @@ if __name__ == '__main__':
     
     v.add_subview(button2)
     
-    placeholder = print
+    handler_placeholder = print
     
     expert_action = Action(
         "Special expert action",
-        placeholder,
+        print,
     )
     expert_action.hidden = True
     
@@ -227,8 +227,8 @@ if __name__ == '__main__':
 
     # Styling
     
-    from uiutils.sfsymbol import SymbolImage
-    #print(dir(SymbolImage('photo.on.rectangle').objc_instance))
+    from ui3.sfsymbol import SymbolImage
+
     button3 = ui.Button(
         title='Styling',
         background_color='white',
@@ -242,24 +242,24 @@ if __name__ == '__main__':
     
     set_menu(button3, [
         Action(
-            'Verbose menu item gets the space it needs', placeholder,
+            'Verbose menu item gets the space it needs', handler_placeholder,
         ),
         Action(
-            'Regular Pythonista icon', placeholder,
+            'Regular Pythonista icon', handler_placeholder,
             image=ui.Image('iob:close_32'),
         ),
 
         Action(
-            'SFSymbol', placeholder,
+            'SFSymbol', handler_placeholder,
             image=SymbolImage('photo.on.rectangle'),
         ),
         Action(
-            'Destructive', placeholder,
+            'Destructive', handler_placeholder,
             image=SymbolImage('tornado'),
             attributes=Action.DESTRUCTIVE,
         ),
         Action(
-            'Disabled', placeholder,
+            'Disabled', handler_placeholder,
             attributes=Action.DISABLED,
         ),
     ])
