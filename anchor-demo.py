@@ -6,7 +6,7 @@ import time
 import ui
 
 from ui3.anchor import *
-import scripter
+from ui3.safearea import SafeAreaView
 
 accent_color = '#cae8ff'
 

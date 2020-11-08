@@ -107,6 +107,14 @@ Features:
    - `center`
 
    For your convenience, `dock` will also add the view as a subview of the container.
+   
+   `dock` is also applied to docking to another view in a shared superview. This is a convenient way of placing a view beside another view, center aligned with the reference. For example, placing a view under the other view:
+   
+   ```
+   dock(second_view).below(first_view)
+   ```
+   
+   The methods available are `below`, `above`, `left_of` and `right_of`. These also add the docked view as a subview of the same parent as the reference.
 
 7. Often, it is convenient to set the same anchor for several views at once, or just not repeat the anchor name when it is the same for both the source and the target. `align` function helps with this, in this example aligning all the labels in the `labels` array with the vertical center of the container view:
 
