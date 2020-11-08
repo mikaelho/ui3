@@ -193,7 +193,7 @@ dock(make_label('left')).left(dock_area)
 dock(make_label('bottom\nright')).bottom_right(dock_area)
 dock(make_label('center')).center(dock_area)
 
-attach(make_label('attach')).below(top_center)
+dock(make_label('attach')).below(top_center)
 
 #  ----- Align
 

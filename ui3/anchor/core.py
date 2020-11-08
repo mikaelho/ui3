@@ -19,6 +19,7 @@ from anchors.observer import on_change, remove_on_change
 # TODO: Greater or less than?
 # TODO: Priorities?
 
+
 _constraint_rules_spec = """
 left:
     type: leading
@@ -735,16 +736,6 @@ class Dock:
     right_center = partialmethod(_dock, 'RY')
     center = partialmethod(_dock, 'C')
     
-    
-def dock(view) -> Dock:
-    return Dock(view)
-    
-    
-class Attach:
-    
-    def __init__(self, view):
-        self.view = view
-    
     def between(self, top=None, bottom=None, left=None, right=None):
         a_self = at(self.view)
         if top:
@@ -784,9 +775,9 @@ class Attach:
         at(self.view).left = at(other).right
         align(self.view).center_y(other)
         
-        
-def attach(view) -> Attach:
-    return Attach(view)
+    
+def dock(view) -> Dock:
+    return Dock(view)
     
     
 class Align:
