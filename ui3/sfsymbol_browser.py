@@ -1,6 +1,13 @@
+import json
+
+from pathlib import Path
+
+import objc_util
 import ui
 
 from ui3.sfsymbol import *
+
+NSIndexPath = objc_util.ObjCClass("NSIndexPath")
 
 
 class SymbolSource:
@@ -12,45 +19,37 @@ class SymbolSource:
         tableview.row_height = 50
         self.weight = THIN
         
-        with open('sfsymbolnames.txt', 'r') as fp:
-            all_lines = fp.read()    
-        raw = all_lines.splitlines()
+        self.symbol_names = json.loads(
+            (Path(__file__).parent / 'sfsymbolnames-2_1.json').read_text())
         
-        restricted_prefix = 'Usage restricted'
-        
-        self.symbol_names = []
-        for i, symbol_name in enumerate(raw):
-            if raw[i].startswith(restricted_prefix): continue
-            if i+1 == len(raw): continue
-            value = symbol_name
-            if raw[i+1].startswith(restricted_prefix):
-                value = 'R ' + value
-            self.symbol_names.append(value)
+        self.restricted = set([
+            symbol['symbolName']
+            for symbol
+            in json.loads(
+                (Path(__file__).parent / 'sfsymbols-restricted-2_1.json').read_text())])
 
         self.index = 0
         self.update_list_to_display()
         
         self.prev_button = ui.ButtonItem(
           tint_color='black',
-          image=SymbolImage('arrow.left', 8, weight=THIN),
-          enabled=False,
+          image=SymbolImage('arrow.up', 8, weight=THIN),
           action=self.prev,
         )
         self.to_start_button = ui.ButtonItem(
           tint_color='black',
-          image=SymbolImage('arrow.left.to.line', 8, weight=THIN),
-          enabled=False,
+          image=SymbolImage('arrow.up.to.line', 8, weight=THIN),
           action=self.to_start,
         )
         self.next_button = ui.ButtonItem(
           tint_color='black',
-          image=SymbolImage('arrow.right', 8, weight=THIN),
+          image=SymbolImage('arrow.down', 8, weight=THIN),
           enabled=True,
           action=self.next,
         )
         self.to_end_button = ui.ButtonItem(
           tint_color='black',
-          image=SymbolImage('arrow.right.to.line', 8, weight=THIN),
+          image=SymbolImage('arrow.down.to.line', 8, weight=THIN),
           enabled=True,
           action=self.to_end,
         )
@@ -70,49 +69,39 @@ class SymbolSource:
             self.weight_button]
         
     def update_list_to_display(self):
-        self.data_list = []
-        for i in range(self.index, self.index+self.symbols_per_page):
-            self.data_list.append(self.symbol_names[i])
+        self.data_list = self.symbol_names
+        
+    @property
+    def current_row(self):
+        x, y = self.tableview.content_offset
+        return int(y // self.tableview.row_height)
         
     def next(self, sender):
-        self.index += self.symbols_per_page
-        if self.index + self.symbols_per_page >= len(self.symbol_names):
-            self.index = len(self.symbol_names) - self.symbols_per_page - 1
-            self.next_button.enabled = False
-            self.to_end_button.enabled = False
-        self.prev_button.enabled = True
-        self.to_start_button.enabled = True
-        self.update_list_to_display()
-        self.tableview.reload()
+        total_height = len(self.data_list) * self.tableview.row_height
+        x, y = self.tableview.content_offset
+        w, h = self.tableview.content_size
+        sw, sh = ui.get_screen_size()
+        y += total_height/10
+        if y >= h - sh :
+            self.to_end(sender)
+        else:
+            self.tableview.content_offset = 0, y
         
     def to_end(self, sender):
-        self.index = len(self.symbol_names) - self.symbols_per_page - 1
-        self.next_button.enabled = False
-        self.to_end_button.enabled = False
-        self.prev_button.enabled = True
-        self.to_start_button.enabled = True
-        self.update_list_to_display()
-        self.tableview.reload()
+        self.scroll_to_row(len(self.data_list)-1)
         
     def prev(self, sender):
-        self.index -= self.symbols_per_page
-        if self.index <= 0:
-            self.index = 0
-            self.prev_button.enabled = False
-            self.to_start_button.enabled = False
-        self.next_button.enabled = True
-        self.to_end_button.enabled = True
-        self.update_list_to_display()
-        self.tableview.reload()
+        total_height = len(self.data_list) * self.tableview.row_height
+        x, y = self.tableview.content_offset
+        y -= total_height/10
+        if y <= 0:
+            self.to_start(sender)
+        else:
+            self.tableview.content_offset = 0, y
+        
         
     def to_start(self, sender):
-        self.index = 0
-        self.prev_button.enabled = False
-        self.to_start_button.enabled = False
-        self.next_button.enabled = True
-        self.to_end_button.enabled = True
-        self.update_list_to_display()
-        self.tableview.reload()
+        self.scroll_to_row(0)
         
     def change_weight(self, sender):
         titles = ['Ultralight', 'Thin', 'Light', 'Regular', 'Medium', 'Semibold', 'Bold', 'Heavy', 'Black']
@@ -125,16 +114,29 @@ class SymbolSource:
     def tableview_number_of_rows(self, tableview, section):
         return len(self.data_list)
         
+    def scroll_to_row(self, row):
+        UITableViewScrollPositionMiddle = 2
+        tvobjc = self.tableview.objc_instance
+        nsindex = NSIndexPath.indexPathForRow_inSection_(row ,0)
+        tvobjc.scrollToRowAtIndexPath_atScrollPosition_animated_(
+            nsindex, 
+            UITableViewScrollPositionMiddle, 
+            True)
+        
     def tableview_cell_for_row(self, tableview, section, row):
         cell = ui.TableViewCell()
         cell.selectable = False
         cell.background_color='black'
         
         symbol_name = self.data_list[row]
-        tint_color = 'white'
+        tint_color = 'orange' if symbol_name in self.restricted else 'white'
+        
+        '''
         if symbol_name.startswith('R '):
             symbol_name = symbol_name[2:]
             tint_color = 'orange'
+        '''
+        
         symbol_image = SymbolImage(symbol_name, 
         point_size=14, weight=self.weight, scale=SMALL)
 
@@ -182,25 +184,31 @@ def fuzzyfinder(input, collection, accessor=lambda x: x, sort_results=True):
     else:
         return (z[-1] for z in sorted(suggestions, key=lambda x: x[:2]))
   
-root = ui.View()
-  
-symbol_table = ui.TableView(
-    background_color='black',
-    frame=root.bounds, flex='WH',
-)
-data_source = symbol_table.data_source = SymbolSource(root, symbol_table)
+ 
+class SymbolBrowser(ui.View):
 
-search_field = ui.TextField(
-    frame=(8,8, root.width-16, 40),
-    flex='W',
-    clear_button_mode='always',
-    delegate=data_source,
-)
-symbol_table.y = search_field.height + 16
-symbol_table.height -= (search_field.height + 16)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-root.add_subview(search_field)
-root.add_subview(symbol_table)
+        symbol_table = ui.TableView(
+            background_color='black',
+            frame=self.bounds, flex='WH',
+        )
+        data_source = symbol_table.data_source = SymbolSource(
+            self, symbol_table)
 
-#symbol_table.present()
-root.present('fullscreen')
+        search_field = ui.TextField(
+            frame=(8,8, self.width-16, 40),
+            flex='W',
+            clear_button_mode='always',
+            delegate=data_source,
+        )
+        symbol_table.y = search_field.height + 16
+        symbol_table.height -= (search_field.height + 16)
+
+        self.add_subview(search_field)
+        self.add_subview(symbol_table)
+
+
+if __name__ == '__main__':
+    SymbolBrowser().present('fullscreen')
