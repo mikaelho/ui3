@@ -4,7 +4,7 @@ Repository of small UI and other utilities, install with:
 
     pip install ui3
 
-Included:
+Included with separate docs:
 
 - anchor - more natural and responsive UI layout creation with anchoring and docking instead of pixel placement
 - controllers - wrappers around various iOS built-in dialogs
