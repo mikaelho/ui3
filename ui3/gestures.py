@@ -195,6 +195,13 @@ UIPinchGestureRecognizer = ObjCClass('UIPinchGestureRecognizer')
 UIRotationGestureRecognizer = ObjCClass('UIRotationGestureRecognizer')
 UISwipeGestureRecognizer = ObjCClass('UISwipeGestureRecognizer')
 
+
+class AnyRecognizer:
+    """
+    Placeholder representing any class
+    for simultaneous recognition.
+    """
+
 #  Drag and drop classes
 
 NSItemProvider = ObjCClass('NSItemProvider')
@@ -369,27 +376,31 @@ class UIGestureRecognizerDelegate(ObjCDelegate):
         else:
             self.recognizer = recognizer_class.alloc().initWithTarget_action_(
                 self, 'gestureAction').autorelease()
-            view.objc_instance.addGestureRecognizer_(self.recognizer)
+            
+            if hasattr(view, 'objc_instance'):
+                view = view.objc_instance
+            view.addGestureRecognizer_(self.recognizer)
 
         retain_global(self)
     
     def gestureAction(_self, _cmd):
         self = ObjCInstance(_self)
         view = self.view
+        objc_view = hasattr(view, 'objc_instance') and view.objc_instance or view
         recognizer = self.recognizer
         handler_func = self.handler_func
         data = Data()
         data.recognizer = recognizer
         data.view = view
-        location = recognizer.locationInView_(view.objc_instance)
+        location = recognizer.locationInView_(objc_view)
         data.location = ui.Point(location.x, location.y)
         data.state = recognizer.state()
         data.number_of_touches = recognizer.numberOfTouches()
         
         if (_is_objc_type(recognizer, UIPanGestureRecognizer) or 
         _is_objc_type(recognizer, UIScreenEdgePanGestureRecognizer)):
-            trans = recognizer.translationInView_(ObjCInstance(view))
-            vel = recognizer.velocityInView_(ObjCInstance(view))
+            trans = recognizer.translationInView_(objc_view)
+            vel = recognizer.velocityInView_(objc_view)
             data.translation = ui.Point(trans.x, trans.y)
             data.velocity = ui.Point(vel.x, vel.y)
         elif _is_objc_type(recognizer, UIPinchGestureRecognizer):
@@ -405,7 +416,7 @@ class UIGestureRecognizerDelegate(ObjCDelegate):
             _self, _sel, _gr, _other_gr):
         self = ObjCInstance(_self)
         other_gr = ObjCInstance(_other_gr)
-        return other_gr in self.other_recognizers
+        return other_gr in self.other_recognizers or AnyRecognizer in self.other_recognizers
         
     @on_main_thread
     def first(self):
@@ -433,6 +444,11 @@ class UIGestureRecognizerDelegate(ObjCDelegate):
         if isinstance(other, type(self))
         else other)
         self.other_recognizers.append(other_recognizer)
+        self.recognizer.delegate = self
+        
+    @on_main_thread
+    def with_any(self):
+        self.other_recognizers.append(AnyRecognizer)
         self.recognizer.delegate = self
 
         

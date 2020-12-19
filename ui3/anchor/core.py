@@ -13,7 +13,8 @@ from types import SimpleNamespace as ns
 import ui
 import objc_util
 
-from anchors.observer import on_change, remove_on_change
+from ui3.anchor.observer import on_change, remove_on_change
+
 
 # TODO: lte, gte, in_range, in_range_angle, in_rect
 # TODO: Greater or less than?

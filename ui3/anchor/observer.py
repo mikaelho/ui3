@@ -1,11 +1,11 @@
 import objc_util
 
-import anchors.objc_plus as objc_plus
+from .objc_plus import ObjCDelegate
 
 
-class NSKeyValueObserving(objc_plus.ObjCDelegate):
+class NSKeyValueObserving(ObjCDelegate):
     
-    def __init__(self, observer_list='_frane_observers'):        
+    def __init__(self, observer_list='_frame_observers'):        
         #objc_util.retain_global(self)
         self.targets = {}
         self.callbacks = {}
