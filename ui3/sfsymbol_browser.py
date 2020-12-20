@@ -248,9 +248,10 @@ class SymbolMatrix(ui.View):
                 image=symbol_image,
                 width=self.button_size,
                 height=self.button_size,
-                #action=self.copy_to_clipboard,
+                action=self.copy_to_clipboard,
                 #enabled=False,
             )
+            symbol_button.symbol_name = symbol_name
             self.scrollview.container.add_subview(symbol_button)
             
             if not first_of_line:
@@ -267,8 +268,12 @@ class SymbolMatrix(ui.View):
                 symbol_button.y = previous.y
                 previous = symbol_button
         at(self.scrollview.container).fit_size = at(previous).frame
+        
+    def copy_to_clipboard(self, sender):
+        clipboard.set(sender.symbol_name)
+        dialogs.hud_alert(f'Copied {sender.symbol_name}')
                 
 
 if __name__ == '__main__':
-    SymbolBrowser().present('fullscreen')
+    SymbolMatrix().present('fullscreen')
 
