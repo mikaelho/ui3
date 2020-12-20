@@ -2,7 +2,7 @@
 UI and other utils for Pythonista iOS app
 """
 
-__version__ = '2020.12.19'
+__version__ = '2020.12.20'
 
 
 from more_itertools import collapse
