@@ -181,12 +181,21 @@ attr:
     source:
         regular: source._custom
 fit_size:
+    target:
+        attribute: target.frame
+        value: subview_max(target)
     source:
         regular: subview_bounds(source)
 fit_width:
+    target:
+        attribute: target.width
+        value: subview_max(target)[2]
     source:
         regular: subview_bounds(source).width
 fit_height:
+    target:
+        attribute: target.height
+        value: subview_max(target)[3]
     source:
         regular: subview_bounds(source).height
 """
@@ -215,7 +224,8 @@ class At:
         while changed and counter < 5:
             changed = False
             counter += 1
-            for constraint in self.target_for.values():
+            #for constraint in self.target_for.values():
+            for constraint in self.target_for:
                 value_changed = next(constraint.runner)
                 changed = changed or value_changed
             if changed:
@@ -324,8 +334,9 @@ class At:
             if constraint.source == self:
                 self.at.source_for.add(constraint)
             elif constraint.target == self:
-                self.at._remove_constraint(self.prop)
-                self.at.target_for[self.prop] = constraint
+                #self.at._remove_constraint(self.prop)
+                #self.at.target_for[self.prop] = constraint
+                self.at.target_for.add(constraint)
             else:
                 raise ValueError('Disconnected constraint')
             
@@ -335,7 +346,8 @@ class At:
             """
             h = set([*self.HORIZONTALS, 'center'])
             v = set([*self.VERTICALS, 'center'])
-            active = set(self.at.target_for.keys())
+            #active = set(self.at.target_for.keys())
+            active = set([constraint.target.prop for constraint in self.at.target_for])
             horizontals = active.intersection(h)
             verticals = active.intersection(v)
             if len(horizontals) > 2:
@@ -439,7 +451,8 @@ class At:
                 # {target.prop}
                 def constraint_runner(source, target):
 
-                    scripts = target.at.target_for
+                    # scripts = target.at.target_for
+                    scripts = set([constraint.target.prop for constraint in target.at.target_for])
                     func = source.callable
                     source = source.at.view
                     target = target.at.view
@@ -514,7 +527,8 @@ class At:
                         center_props = set(('center', '{center_prop}'))
                         if '{opposite_prop}' in scripts:
                             target_value = ({target.get_target_value(flex_prop)})
-                        elif len(center_props.intersection(set(scripts.keys()))):
+                        # elif len(center_props.intersection(set(scripts.keys()))):
+                        elif len(center_props.intersection(scripts)):
                             target_value = ({target.get_target_value(flex_center_prop)})
                         else:
                             target_value = {target.get_target_value()}
@@ -522,7 +536,7 @@ class At:
                 flex_set = f'''
                             if '{opposite_prop}' in scripts:
                                 {target.get_attribute(flex_prop)} = target_value
-                            elif len(center_props.intersection(set(scripts.keys()))):
+                            elif len(center_props.intersection(scripts)):
                                 {target.get_attribute(flex_center_prop)} = target_value
                             else: 
                                 {target_attribute} = target_value
@@ -563,7 +577,8 @@ class At:
             at.__heading = 0
             at.heading_adjustment = 0
             at.source_for = set()
-            at.target_for = {}
+            #at.target_for = {}
+            at.target_for = set()
             at.checking = False
             view._at = at
             return at
@@ -587,18 +602,32 @@ class At:
             #constraint.set_constraint(value)
             #constraint.start_observing()
         elif source is None:
-            self._remove_constraint(attr_string)
+            self._remove_all_constraints(attr_string)
         else:  # Constant or function
             source = At.ConstantAnchor(source)
             constraint = At.Constraint(source, target)
         
-    def _remove_constraint(self, attr_string):
+    def _remove_all_constraints(self, attr_string):
+        constraints_to_remove = [
+            constraint 
+            for constraint
+            in self.target_for
+            if constraint.target.prop == attr_string
+        ]
+        for constraint in constraints_to_remove:
+            self._remove_constraint(constraint)
+        
+    #def _remove_constraint(self, attr_string):
+    def _remove_constraint(self, constraint):
         target_len = len(self.target_for)
-        constraint = self.target_for.pop(attr_string, None)
+        was_removed = constraint in self.target_for
+        self.target_for.discard(constraint)
+        #constraint = self.target_for.pop(attr_string, None)
         if target_len and not len(self.target_for) and not len(self.source_for):
             #At.observer.stop_observing(self.view)
             remove_on_change(self.view, self.on_change)
-        if constraint:
+        #if constraint:
+        if was_removed:
             source_at = constraint.source.at
             source_len = len(source_at.source_for)
             source_at.source_for.discard(constraint)
@@ -676,6 +705,7 @@ def direction(target, source, value):
         pass
     return value
     
+    
 def subview_bounds(view):
     subviews_accumulated = list(accumulate(
         [v.frame for v in view.subviews], 
@@ -685,6 +715,24 @@ def subview_bounds(view):
     else:
         bounds = ui.Rect(0, 0, 0, 0)
     return bounds.inset(-At.gap, -At.gap)
+
+
+def subview_max(view):
+    width = height = 0
+    for subview in view.subviews:
+        width = max(
+            width,
+            subview.frame.max_x
+        )
+        height = max(
+            height,
+            subview.frame.max_y
+        )
+        
+    width += At.gap
+    height += At.gap
+
+    return view.x, view.y, width, height
 
 
 class ConstraintError(RuntimeError):
@@ -960,4 +1008,39 @@ def size_to_fit(view):
     if type(view) is ui.Button:
         view.frame = view.frame.inset(0, -At.gap)
     return view
+
+
+class FitView(ui.View):
+    
+    def __init__(self, active=True, **kwargs):
+        super().__init__(**kwargs)
+        self.active = active
+    
+    def add_subview(self, subview):
+        super().add_subview(subview)
+        if self.active:
+            at(self).fit_size = at(subview).frame
+       
+        
+class FitScrollView(ui.View):
+    
+    def __init__(self, active=True, **kwargs):
+        super().__init__(**kwargs)
+        self.scroll_view = ui.ScrollView(
+            frame=self.bounds, flex='WH',
+        )
+        self.add_subview(self.scroll_view)
+        
+        self.container = FitView(active=active)
+        self.scroll_view.add_subview(self.container)
+        
+        attr(self.scroll_view).content_size = at(self.container).size
+        
+    @property
+    def active(self):
+        return self.container.active
+        
+    @active.setter
+    def active(self, value):
+        self.container.active = value
 

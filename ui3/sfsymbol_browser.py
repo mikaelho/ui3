@@ -1,11 +1,14 @@
 import json
+import math
 
 from pathlib import Path
 
 import objc_util
 import ui
 
+from ui3.anchor import *
 from ui3.sfsymbol import *
+
 
 NSIndexPath = objc_util.ObjCClass("NSIndexPath")
 
@@ -131,12 +134,6 @@ class SymbolSource:
         symbol_name = self.data_list[row]
         tint_color = 'orange' if symbol_name in self.restricted else 'white'
         
-        '''
-        if symbol_name.startswith('R '):
-            symbol_name = symbol_name[2:]
-            tint_color = 'orange'
-        '''
-        
         symbol_image = SymbolImage(symbol_name, 
         point_size=14, weight=self.weight, scale=SMALL)
 
@@ -208,7 +205,70 @@ class SymbolBrowser(ui.View):
 
         self.add_subview(search_field)
         self.add_subview(symbol_table)
-
+        
+        
+class SymbolMatrix(ui.View):
+    
+    button_size = 40
+    button_size_with_gap = button_size + 8
+    
+    def __init__(self, **kwargs):
+        self.background_color = 'black'
+        super().__init__(**kwargs)
+        self.scrollview = FitScrollView(
+            active=False,
+            frame=self.bounds, flex='WH',
+        )
+        self.add_subview(self.scrollview)
+        
+        self.symbol_names = json.loads(
+            (Path(__file__).parent / 'sfsymbolnames-2_1.json').read_text())
+        
+        self.restricted = set([
+            symbol['symbolName']
+            for symbol
+            in json.loads(
+                (Path(__file__).parent / 'sfsymbols-restricted-2_1.json').read_text())])
+                
+        horizontal_item_limit = int(math.sqrt(len(self.symbol_names)))
+        
+        first_of_line = None
+        for i, symbol_name in enumerate(self.symbol_names):
+            tint_color = 'orange' if symbol_name in self.restricted else 'white'
+        
+            symbol_image = SymbolImage(
+                symbol_name, 
+                point_size=14, 
+                weight=THIN, 
+                scale=SMALL,
+            )
+            symbol_button = ui.Button(
+                tint_color=tint_color,
+                font=('Fira Mono', 14),
+                image=symbol_image,
+                width=self.button_size,
+                height=self.button_size,
+                #action=self.copy_to_clipboard,
+                #enabled=False,
+            )
+            self.scrollview.container.add_subview(symbol_button)
+            
+            if not first_of_line:
+                symbol_button.x = 8
+                symbol_button.y = 8
+                first_of_line = previous = symbol_button
+            elif i % horizontal_item_limit == 0:
+                symbol_button.x = 8
+                symbol_button.y = first_of_line.y + self.button_size_with_gap
+                at(self.scrollview.container).fit_size = at(previous).frame
+                first_of_line = previous = symbol_button
+            else:
+                symbol_button.x = previous.x + self.button_size_with_gap
+                symbol_button.y = previous.y
+                previous = symbol_button
+        at(self.scrollview.container).fit_size = at(previous).frame
+                
 
 if __name__ == '__main__':
     SymbolBrowser().present('fullscreen')
+

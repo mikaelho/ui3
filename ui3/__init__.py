@@ -5,7 +5,12 @@ UI and other utils for Pythonista iOS app
 __version__ = '2020.12.19'
 
 
+from more_itertools import collapse
+
 import ui
+
+from ui3.anchor import *
+from ui3.gestures import *
 
 
 def add_subviews(view, *subviews):
