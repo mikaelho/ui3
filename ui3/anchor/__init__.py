@@ -198,6 +198,14 @@ fit_height:
         value: subview_max(target)[3]
     source:
         regular: subview_bounds(source).height
+text_height:
+    target:
+        attribute: target.height
+        value: get_text_height(target)
+text_width:
+    target:
+        attribute: target.width
+        value: get_text_width(target)
 """
 
 
@@ -237,8 +245,9 @@ class At:
                 
     class Anchor:
         
-        HORIZONTALS = set('left right center_x width fit_width'.split())
-        VERTICALS = set('top bottom center_y height fit_height'.split())
+        HORIZONTALS = set('left right center_x width'.split())
+        VERTICALS = set('top bottom center_y height'.split())
+        NO_CHECKS = set('fit_size fit_height fit_width text_width text_height'.split())
         
         def __init__(self, at, prop):
             self.at = at
@@ -310,9 +319,10 @@ class At:
             return target_value
                 
         def check_for_warnings(self, source):
+            
             if self.at.constraint_warnings and source.prop not in (
                 'constant', 'function'
-            ):
+            ) and self.prop not in self.NO_CHECKS:
                 source_direction, target_direction = [
                     'v' if c in self.VERTICALS else '' +
                     'h' if c in self.HORIZONTALS else ''
@@ -651,8 +661,10 @@ class At:
     # PUBLIC PROPERTIES
             
     left = _prop('left')
+    x = _prop('left')
     right = _prop('right')
     top = _prop('top')
+    y = _prop('top')
     bottom = _prop('bottom')
     center = _prop('center')
     center_x = _prop('center_x')
@@ -667,6 +679,8 @@ class At:
     fit_size = _prop('fit_size')
     fit_width = _prop('fit_width')
     fit_height = _prop('fit_height')
+    text_height = _prop('text_height')
+    text_width = _prop('text_width')
     
     def _remove_anchors(self):
         ...
@@ -718,6 +732,7 @@ def subview_bounds(view):
 
 
 def subview_max(view):
+    
     width = height = 0
     for subview in view.subviews:
         width = max(
@@ -733,6 +748,16 @@ def subview_max(view):
     height += At.gap
 
     return view.x, view.y, width, height
+    
+    
+def get_text_height(view):
+    size = view.objc_instance.sizeThatFits_(objc_util.CGSize(view.width, 0))
+    return size.height
+
+
+def get_text_width(view):
+    size = view.objc_instance.sizeThatFits_(objc_util.CGSize(0, view.height))
+    return size.width
 
 
 class ConstraintError(RuntimeError):
@@ -811,22 +836,24 @@ class Dock:
     def above(self, other):
         other.superview.add_subview(self.view)
         at(self.view).bottom = at(other).top
-        align(self.view).center_x(other)
+        align(self.view).x(other)
+        align(self.view).width(other)
         
     def below(self, other):
         other.superview.add_subview(self.view)
         at(self.view).top = at(other).bottom
-        at(self.view).center_x = at(other).center_x
+        align(self.view).x(other)
+        align(self.view).width(other)
         
     def left_of(self, other):
         other.superview.add_subview(self.view)
-        at(self.view).right = at(other).left
-        align(self.view).center_y(other)
+        align(self.view).y(other)
+        align(self.view).height(other)
         
     def right_of(self, other):
         other.superview.add_subview(self.view)
-        at(self.view).left = at(other).right
-        align(self.view).center_y(other)
+        align(self.view).y(other)
+        align(self.view).height(other)
         
     
 def dock(view) -> Dock:
@@ -851,8 +878,10 @@ class Align:
                 setattr(at(other), prop, getattr(anchor_at, prop))
     
     left = partialmethod(_align, 'left')
+    x = partialmethod(_align, 'left')
     right = partialmethod(_align, 'right')
     top = partialmethod(_align, 'top')
+    y = partialmethod(_align, 'bottom')
     bottom = partialmethod(_align, 'bottom')
     center = partialmethod(_align, 'center')
     center_x = partialmethod(_align, 'center_x')
