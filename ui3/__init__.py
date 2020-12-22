@@ -2,10 +2,10 @@
 UI and other utils for Pythonista iOS app
 """
 
-__version__ = '2020.12.20'
+__version__ = '2020.12.22'
 
 
-from more_itertools import collapse
+# from more_itertools import collapse
 
 import ui
 
