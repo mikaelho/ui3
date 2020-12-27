@@ -15,7 +15,8 @@ class NSKeyValueObserving(ObjCDelegate):
             'transform',
             'position',
             'anchorPoint',
-            'frame')
+            'frame',
+            'contentOffset')
     
     def observe(self, target_view, callback_func):
         objc_target = target_view.objc_instance

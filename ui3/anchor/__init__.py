@@ -206,6 +206,24 @@ text_width:
     target:
         attribute: target.width
         value: get_text_width(target)
+content_offset:
+    target:
+        attribute: target.content_offset
+        value: value
+    source:
+        regular: source.content_offset
+content_x:
+    target:
+        attribute: target.content_offset
+        value: (value, target.content_offset[1])
+    source:
+        regular: source.content_offset[0]
+content_y:
+    target:
+        attribute: target.content_offset
+        value: (target.content_offset[0], value)
+    source:
+        regular: source.content_offset[1]
 """
 
 
@@ -455,7 +473,13 @@ class At:
             
             flex_get, flex_set = self.get_flex(target)
 
-            call_callable = self.get_call_str(source)
+            call_source_callable = ''
+            call_callable = ''
+            if source.callable:
+                if source.callable in source_conversions:
+                    call_source_callable = self.get_call_str(source, 'value')
+                else:
+                    call_callable = self.get_call_str(source, 'target_value')
 
             update_gen_str = (f'''\
                 # {target.prop}
@@ -471,7 +495,7 @@ class At:
                     prev_bounds = None
                     while True:
                         value = ({source_value} {gap}) {source.modifiers}
-
+                        {call_source_callable}
                         {flex_get}
 
                         if (target_value != prev_value or 
@@ -488,7 +512,7 @@ class At:
                 '''
             )
             update_gen_str = textwrap.dedent(update_gen_str)
-            #if self.target_prop == 'text':
+            #if call_source_callable:
             #    print(update_gen_str)
             exec(update_gen_str)
             
@@ -553,17 +577,15 @@ class At:
                 '''
             return flex_get, flex_set
             
-        def get_call_str(self, source):
-            if not source.callable:
-                return ''
+        def get_call_str(self, source, target_param_name):
                 
             call_strs = {
-                1: 'func(target_value)',
-                2: 'func(target_value, target)',
-                3: 'func(target_value, target, source)',
+                1: f'func({target_param_name})',
+                2: f'func({target_param_name}, target)',
+                3: f'func({target_param_name}, target, source)',
             }
             parameter_count = len(inspect.signature(source.callable).parameters)
-            return f'target_value = {call_strs[parameter_count]}'
+            return f'{target_param_name} = {call_strs[parameter_count]}'
             
         def get_opposite(self, prop):
             opposites = (
@@ -681,6 +703,9 @@ class At:
     fit_height = _prop('fit_height')
     text_height = _prop('text_height')
     text_width = _prop('text_width')
+    content_offset = _prop('content_offset')
+    content_x = _prop('content_x')
+    content_y = _prop('content_y')
     
     def _remove_anchors(self):
         ...
@@ -758,6 +783,39 @@ def get_text_height(view):
 def get_text_width(view):
     size = view.objc_instance.sizeThatFits_(objc_util.CGSize(0, view.height))
     return size.width
+
+
+def via_screen(source_value, target, source):
+    if not source.superview or not target.superview:
+        return (0, 0)
+    return ui.convert_point(
+        ui.convert_point(source_value, source.superview),
+        to_view=target.superview,
+    )
+
+
+def via_screen_x(source_value, target, source):
+    transformed = via_screen(
+        (source_value, 0),
+        target,
+        source
+    )
+    return transformed[0]
+    
+
+def via_screen_y(source_value, target, source):
+    transformed = via_screen(
+        (0, source_value),
+        target,
+        source
+    )
+    return transformed[1]
+    
+source_conversions = (
+    via_screen,
+    via_screen_x,
+    via_screen_y,
+)
 
 
 class ConstraintError(RuntimeError):
@@ -847,11 +905,13 @@ class Dock:
         
     def left_of(self, other):
         other.superview.add_subview(self.view)
+        at(self.view).right = at(other).left
         align(self.view).y(other)
         align(self.view).height(other)
         
     def right_of(self, other):
         other.superview.add_subview(self.view)
+        at(self.view).left = at(other).right
         align(self.view).y(other)
         align(self.view).height(other)
         
