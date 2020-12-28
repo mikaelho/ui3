@@ -540,7 +540,7 @@ class At:
                 )
                 
             gap = ''
-            if align_type == self.DIFFERENT:
+            if align_type == self.DIFFERENT and not self.target.at._tight:
                 gap = (
                     f'+ {At.gap}'
                     if target_edge_type == self.LEADING
@@ -707,15 +707,21 @@ class At:
     content_x = _prop('content_x')
     content_y = _prop('content_y')
     
+    @property
+    def tight(self):
+        self._tight = True
+        return self
+    
     def _remove_anchors(self):
         ...
                 
     
 # Direct access functions
     
-def at(view, func=None):
+def at(view, func=None, tight=False):
     a = At(view)
     a.callable = func
+    a._tight = tight
     return a
     
 def attr(data, func=None):
@@ -785,7 +791,7 @@ def get_text_width(view):
     return size.width
 
 
-def via_screen(source_value, target, source):
+def screen(source_value, target, source):
     if not source.superview or not target.superview:
         return (0, 0)
     return ui.convert_point(
@@ -794,7 +800,7 @@ def via_screen(source_value, target, source):
     )
 
 
-def via_screen_x(source_value, target, source):
+def screen_x(source_value, target, source):
     transformed = via_screen(
         (source_value, 0),
         target,
@@ -803,7 +809,7 @@ def via_screen_x(source_value, target, source):
     return transformed[0]
     
 
-def via_screen_y(source_value, target, source):
+def screen_y(source_value, target, source):
     transformed = via_screen(
         (0, source_value),
         target,
@@ -842,11 +848,17 @@ class Dock:
     
     def __init__(self, view):
         self.view = view
+        self._tight = False
+        
+    @property
+    def tight(self):
+        self._tight = True
+        return self
         
     def _dock(self, directions, superview, modifier=0):
         view = self.view
         superview.add_subview(view)
-        v = at(view)
+        v = at(view, tight=self._tight)
         sv = at(superview)
         for direction in directions:
             prop, sign = self.direction_map[direction]
@@ -873,7 +885,7 @@ class Dock:
     center = partialmethod(_dock, 'C')
     
     def between(self, top=None, bottom=None, left=None, right=None):
-        a_self = at(self.view)
+        a_self = at(self.view, tight=self._tight)
         if top:
             a_self.top = at(top).bottom
         if bottom:
@@ -893,25 +905,25 @@ class Dock:
 
     def above(self, other):
         other.superview.add_subview(self.view)
-        at(self.view).bottom = at(other).top
+        at(self.view, tight=self._tight).bottom = at(other).top
         align(self.view).x(other)
         align(self.view).width(other)
         
     def below(self, other):
         other.superview.add_subview(self.view)
-        at(self.view).top = at(other).bottom
+        at(self.view, tight=self._tight).top = at(other).bottom
         align(self.view).x(other)
         align(self.view).width(other)
         
     def left_of(self, other):
         other.superview.add_subview(self.view)
-        at(self.view).right = at(other).left
+        at(self.view, tight=self._tight).right = at(other).left
         align(self.view).y(other)
         align(self.view).height(other)
         
     def right_of(self, other):
         other.superview.add_subview(self.view)
-        at(self.view).left = at(other).right
+        at(self.view, tight=self._tight).left = at(other).right
         align(self.view).y(other)
         align(self.view).height(other)
         

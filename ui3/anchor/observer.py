@@ -53,9 +53,10 @@ class NSKeyValueObserving(ObjCDelegate):
         self = objc_util.ObjCInstance(_self)
         objc_target = objc_util.ObjCInstance(_obj).delegate()
         try:
-            target_view = self.targets[objc_target]
-            for callback in self.callbacks[objc_target]:
-                callback(target_view)
+            target_view = self.targets.get(objc_target)
+            if target_view:
+                for callback in self.callbacks.get(objc_target, []):
+                    callback(target_view)
         except Exception as e:
             print('observeValueForKeyPath:', self, type(e), e)
 
