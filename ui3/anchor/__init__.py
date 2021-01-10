@@ -801,7 +801,7 @@ def screen(source_value, target, source):
 
 
 def screen_x(source_value, target, source):
-    transformed = via_screen(
+    transformed = screen(
         (source_value, 0),
         target,
         source
@@ -810,7 +810,7 @@ def screen_x(source_value, target, source):
     
 
 def screen_y(source_value, target, source):
-    transformed = via_screen(
+    transformed = screen(
         (0, source_value),
         target,
         source
@@ -818,9 +818,9 @@ def screen_y(source_value, target, source):
     return transformed[1]
     
 source_conversions = (
-    via_screen,
-    via_screen_x,
-    via_screen_y,
+    screen,
+    screen_x,
+    screen_y,
 )
 
 
